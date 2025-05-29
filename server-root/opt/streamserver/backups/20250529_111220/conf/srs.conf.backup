@@ -1,0 +1,129 @@
+# SRS 5.0 Professional Streaming Configuration
+# Optimized for 24/7 HD streaming with HLS delivery
+
+listen              1935;
+max_connections     1000;
+srs_log_tank        file;
+srs_log_file        /opt/streamserver/srs/logs/srs.log;
+srs_log_level       info;
+
+# HTTP API for monitoring and control
+http_api {
+    enabled         on;
+    listen          1985;
+    crossdomain     on;
+}
+
+# HTTP server for HLS delivery
+http_server {
+    enabled         on;
+    listen          8080;
+    dir             /opt/streamserver/srs/hls;
+    crossdomain     on;
+}
+
+# Main streaming vhost
+vhost __defaultVhost__ {
+    # HLS streaming configuration
+    hls {
+        enabled         on;
+        hls_path        /opt/streamserver/srs/hls;
+        hls_fragment    3;
+        hls_window      60;
+        hls_cleanup     on;
+        hls_dispose     30;
+        hls_m3u8_file   [app]/[stream].m3u8;
+        hls_ts_file     [app]/[stream]-[seq].ts;
+    }
+    
+    # HTTP-FLV streaming
+    http_remux {
+        enabled     on;
+        mount       [vhost]/[app]/[stream].flv;
+    }
+    
+    # Transcoding for consistent quality
+    transcode {
+        enabled     on;
+        ffmpeg      /usr/bin/ffmpeg;
+        
+        engine hd {
+            enabled          on;
+            vcodec           libx264;
+            vbitrate         2000;
+            vfps             25;
+            vwidth           1920;
+            vheight          1080;
+            vthreads         2;
+            vprofile         main;
+            vpreset          medium;
+            vparams {
+                g            50;
+                keyint_min   25;
+                sc_threshold 0;
+            }
+            
+            acodec           aac;
+            abitrate         128;
+            asample_rate     44100;
+            achannels        2;
+            
+            output           rtmp://127.0.0.1:[port]/[app]?vhost=[vhost]/[stream]_hd;
+        }
+    }
+    
+    # Forward to transcoded stream
+    forward {
+        enabled      on;
+        destination  127.0.0.1:1935/live;
+    }
+    
+    # DVR recording (optional)
+    dvr {
+        enabled              off;
+        dvr_path             /opt/streamserver/content/archive/[app]/[stream]/[timestamp].flv;
+        dvr_plan             session;
+        dvr_duration         30;
+        dvr_wait_keyframe    on;
+    }
+    
+    # Play settings
+    play {
+        gop_cache       on;
+        queue_length    10;
+        mw_latency      100;
+    }
+    
+    # Publish settings
+    publish {
+        mr          off;
+        mr_latency  350;
+    }
+    
+    # HTTP hooks for authentication and callbacks
+    http_hooks {
+        enabled         on;
+        on_connect      http://127.0.0.1/api/hooks/connect;
+        on_close        http://127.0.0.1/api/hooks/close;
+        on_publish      http://127.0.0.1/api/hooks/publish;
+        on_unpublish    http://127.0.0.1/api/hooks/unpublish;
+        on_play         http://127.0.0.1/api/hooks/play;
+        on_stop         http://127.0.0.1/api/hooks/stop;
+        on_hls          http://127.0.0.1/api/hooks/hls;
+        on_hls_notify   http://127.0.0.1/api/hooks/hls_notify;
+    }
+}
+
+# WebRTC configuration
+rtc_server {
+    enabled on;
+    listen 8000;
+    # For production, set to your server's public IP
+    candidate $CANDIDATE;
+}
+
+# Stats configuration
+stats {
+    network         0;
+    disk            sda sdb xvda xvdb;
+}

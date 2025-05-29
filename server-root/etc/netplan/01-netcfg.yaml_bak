@@ -1,0 +1,22 @@
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    ens18:
+      match:
+        macaddress: 00:50:56:56:62:c4
+      addresses: 
+        - 144.126.156.143/21
+        #- 2605:a140:2226:6881:0000:0000:0000:0001/64
+      #gateway6: fe80::1
+      routes:
+        - to: 0.0.0.0/0
+          via: 144.126.152.1
+          on-link: true
+      nameservers:
+        search: [ invalid ]
+        addresses:
+          - 209.126.15.51
+          - 209.126.15.52
+          #- 2605:a140:5028::1:53
+          #- 2605:a140:5028::2:53

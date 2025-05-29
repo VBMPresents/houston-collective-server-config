@@ -1,0 +1,2 @@
+/etc/systemd/system/multi-user.target.wants/grub-common.service
+/etc/systemd/system/sleep.target.wants/grub-common.service

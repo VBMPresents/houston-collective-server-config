@@ -1,0 +1,20 @@
+[Unit]
+Description=SRS (Simple Realtime Server)
+Documentation=https://ossrs.net/
+After=network.target
+
+[Service]
+Type=forking
+User=streamadmin
+Group=streamadmin
+WorkingDirectory=/opt/streamserver
+ExecStart=/usr/local/bin/srs -c /opt/streamserver/srs/conf/srs.conf
+PIDFile=/opt/streamserver/objs/srs.pid
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=mixed
+Restart=always
+RestartSec=3
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

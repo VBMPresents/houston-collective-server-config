@@ -1,0 +1,23 @@
+Dist: focal
+Name: Focal Fossa
+Version: 20.04.4 LTS
+Date: Thu, 23 April 2020 20:04:00 UTC
+Supported: 1
+Description: This is the 20.04.4 LTS release
+Release-File: http://archive.ubuntu.com/ubuntu/dists/focal-updates/Release
+ReleaseNotes: http://archive.ubuntu.com/ubuntu/dists/focal-updates/main/dist-upgrader-all/current/DevelReleaseAnnouncement
+ReleaseNotesHtml: http://archive.ubuntu.com/ubuntu/dists/focal-updates/main/dist-upgrader-all/current/DevelReleaseAnnouncement.html
+UpgradeTool: http://archive.ubuntu.com/ubuntu/dists/focal-updates/main/dist-upgrader-all/current/focal.tar.gz
+UpgradeToolSignature: http://archive.ubuntu.com/ubuntu/dists/focal-updates/main/dist-upgrader-all/current/focal.tar.gz.gpg
+
+Dist: jammy
+Name: Jammy Jellyfish
+Version: 22.04
+Date: Thu, 21 April 2022 22:04:00 UTC
+Supported: 0
+Description: This is the 22.04 release
+Release-File: http://archive.ubuntu.com/ubuntu/dists/jammy/Release
+ReleaseNotes: http://archive.ubuntu.com/ubuntu/dists/jammy/main/dist-upgrader-all/current/DevelReleaseAnnouncement
+ReleaseNotesHtml: http://archive.ubuntu.com/ubuntu/dists/jammy/main/dist-upgrader-all/current/DevelReleaseAnnouncement.html
+UpgradeTool: http://archive.ubuntu.com/ubuntu/dists/jammy/main/dist-upgrader-all/current/jammy.tar.gz
+UpgradeToolSignature: http://archive.ubuntu.com/ubuntu/dists/jammy/main/dist-upgrader-all/current/jammy.tar.gz.gpg

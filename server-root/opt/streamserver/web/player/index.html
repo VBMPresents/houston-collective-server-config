@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Houston Collective - Live Stream</title>
+    
+    <!-- HLS.js for browser HLS support -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.12/dist/hls.min.js"></script>
+    
+    <style>
+        /* Houston Collective Sunset Theme */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, 
+                #1a1a2e 0%, 
+                #2d1b37 15%,
+                #4a2c4a 30%,
+                #6b3e5d 45%,
+                #8e4f6f 60%,
+                #b16082 75%,
+                #d17194 90%,
+                #f082a6 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(15px);
+        }
+        
+        .logo {
+            font-size: 3rem;
+            font-weight: 900;
+            background: linear-gradient(45deg, #FFCE61, #FFE58A, #FFCE61);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(255, 206, 97, 0.6);
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 500;
+        }
+        
+        .player-container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+        
+        .video-wrapper {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(15px);
+            border: 3px solid rgba(255, 206, 97, 0.4);
+            box-shadow: 0 15px 40px rgba(253, 94, 83, 0.4);
+        }
+        
+        #video {
+            width: 100%;
+            height: auto;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+        }
+        
+        .controls {
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #DF4035, #FD5E53, #FF6D62, #EE4F44);
+            color: white;
+            border: 2px solid rgba(255, 229, 138, 0.6);
+            border-radius: 12px;
+            padding: 14px 28px;
+            font-weight: 700;
+            cursor: pointer;
+            margin: 0 0.5rem;
+            transition: all 0.4s ease;
+            font-size: 1rem;
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(253, 94, 83, 0.5);
+            border-color: rgba(255, 229, 138, 0.8);
+        }
+        
+        .stream-info {
+            margin-top: 2rem;
+            text-align: center;
+            padding: 1.5rem;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            border: 2px solid rgba(255, 206, 97, 0.3);
+        }
+        
+        .status {
+            font-size: 1.1rem;
+            color: #6bcf7f;
+            font-weight: 600;
+        }
+        
+        .now-playing {
+            font-size: 1.4rem;
+            margin: 1rem 0;
+            background: linear-gradient(45deg, #FFCE61, #FFE58A);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+        
+        @media (max-width: 768px) {
+            .logo {
+                font-size: 2.2rem;
+            }
+            
+            .header {
+                padding: 1.5rem 1rem;
+            }
+            
+            .player-container {
+                padding: 0 1rem;
+            }
+            
+            .video-wrapper {
+                padding: 1.5rem;
+            }
+            
+            .btn {
+                padding: 12px 20px;
+                font-size: 0.9rem;
+                margin: 0.25rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 class="logo">The Houston Collective</h1>
+        <p class="subtitle">🎵 Live Streaming Experience 🎵</p>
+    </div>
+    
+    <div class="player-container">
+        <div class="video-wrapper">
+            <video id="video" controls autoplay muted>
+                <p>Your browser doesn't support HTML5 video.</p>
+            </video>
+            
+            <div class="controls">
+                <button class="btn" onclick="playStream()">▶️ Play Live Stream</button>
+                <button class="btn" onclick="toggleMute()">🔊 Toggle Sound</button>
+                <button class="btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+            </div>
+        </div>
+        
+        <div class="stream-info">
+            <div class="status">🔴 LIVE</div>
+            <div class="now-playing">Now Playing: Tucker Hart - Hounds of Hell</div>
+            <p>Experience the best of Houston's music scene with crystal-clear adaptive streaming</p>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const streamUrl = 'http://144.126.156.143:8080/live/test.m3u8';
+        
+        function initPlayer() {
+            if (Hls.isSupported()) {
+                const hls = new Hls({
+                    debug: false,
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    backBufferLength: 90,
+                    maxBufferLength: 10,
+                    maxMaxBufferLength: 30,
+                    liveSyncDurationCount: 3,
+                    liveMaxLatencyDurationCount: 5
+                });
+                
+                hls.loadSource(streamUrl);
+                hls.attachMedia(video);
+                
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    console.log('HLS manifest parsed, stream ready');
+                });
+                
+                hls.on(Hls.Events.ERROR, function(event, data) {
+                    console.error('HLS error:', data);
+                });
+                
+                window.hls = hls;
+            }
+            // For Safari (native HLS support)
+            else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = streamUrl;
+            }
+        }
+        
+        function playStream() {
+            video.play().catch(e => {
+                console.log('Autoplay prevented:', e);
+                // Unmute and try again
+                video.muted = false;
+                video.play();
+            });
+        }
+        
+        function toggleMute() {
+            video.muted = !video.muted;
+        }
+        
+        function toggleFullscreen() {
+            if (video.requestFullscreen) {
+                video.requestFullscreen();
+            } else if (video.webkitRequestFullscreen) {
+                video.webkitRequestFullscreen();
+            }
+        }
+        
+        // Initialize player when page loads
+        document.addEventListener('DOMContentLoaded', initPlayer);
+    </script>
+</body>
+</html>

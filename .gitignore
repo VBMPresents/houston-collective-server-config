@@ -1,0 +1,68 @@
+# Media content
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.flv
+*.webm
+*.m4v
+*.ts
+*.m3u8
+content/
+recordings/
+archive/
+
+# Database files (exclude user data)
+*.db
+*.sqlite
+*.sqlite3
+
+# Log files (can be huge)
+*.log
+logs/
+srs/logs/
+/var/log/
+
+# Sensitive files
+*.key
+*.pem
+id_rsa*
+*.crt
+shadow
+passwd
+group
+
+# Temporary files
+*.tmp
+*.cache
+temp/
+tmp/
+/tmp/
+cache/
+
+# System binaries and libraries
+/bin/
+/sbin/
+/lib/
+/lib64/
+/usr/lib/
+/usr/share/
+/proc/
+/sys/
+/dev/
+/run/
+/boot/
+
+# Package management
+/var/cache/
+/var/lib/dpkg/
+/var/lib/apt/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# OS files
+.DS_Store
+Thumbs.db

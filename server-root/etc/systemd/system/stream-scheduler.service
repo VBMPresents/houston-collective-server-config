@@ -1,0 +1,32 @@
+[Unit]
+Description=The Houston Collective Smart Stream Scheduler
+After=network.target srs.service
+Wants=network.target
+Requires=srs.service
+
+[Service]
+Type=simple
+User=streamadmin
+Group=streamadmin
+WorkingDirectory=/opt/streamserver/scripts
+ExecStart=/usr/bin/python3 /opt/streamserver/scripts/smart_scheduler.py
+Restart=always
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+# Enhanced logging for smart features
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smart-scheduler
+
+# Security settings
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/streamserver
+
+# Resource limits for FFmpeg processes
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

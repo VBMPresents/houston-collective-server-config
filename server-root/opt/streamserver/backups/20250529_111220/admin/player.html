@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Houston Collective - Live Stream</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.12/dist/hls.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg,
+                #1a1a2e 0%,
+                #2d1b37 15%,
+                #4a2c4a 30%,
+                #6b3e5d 45%,
+                #8e4f6f 60%,
+                #b16082 75%,
+                #d17194 90%,
+                #f082a6 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            color: #ffffff;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(180deg,
+                rgba(223, 64, 53, 0.1) 0%,
+                rgba(253, 94, 83, 0.08) 25%,
+                rgba(255, 109, 98, 0.06) 50%,
+                rgba(238, 79, 68, 0.04) 75%,
+                rgba(0, 0, 0, 0.3) 100%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg,
+                rgba(253, 94, 83, 0.15) 0%,
+                rgba(255, 109, 98, 0.12) 50%,
+                rgba(238, 79, 68, 0.15) 100%);
+            backdrop-filter: blur(20px);
+            border-bottom: 2px solid rgba(255, 206, 97, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg,
+                transparent 0%,
+                rgba(255, 229, 138, 0.1) 25%,
+                rgba(255, 206, 97, 0.1) 50%,
+                rgba(255, 229, 138, 0.1) 75%,
+                transparent 100%);
+            pointer-events: none;
+        }
+
+        .logo {
+            font-size: 3.2rem;
+            font-weight: 900;
+            background: linear-gradient(45deg, #FFCE61, #FFE58A, #FFCE61);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 15px;
+            text-shadow: 0 0 30px rgba(255, 206, 97, 0.6);
+            letter-spacing: 1px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .subtitle {
+            font-size: 1.3rem;
+            opacity: 0.9;
+            color: #ffffff;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            position: relative;
+            z-index: 1;
+        }
+
+        .player-container {
+            max-width: 1400px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .video-wrapper {
+            background: linear-gradient(135deg,
+                rgba(0, 0, 0, 0.6) 0%,
+                rgba(31, 33, 77, 0.4) 50%,
+                rgba(0, 0, 0, 0.6) 100%);
+            border-radius: 25px;
+            padding: 30px;
+            backdrop-filter: blur(15px);
+            border: 3px solid rgba(255, 206, 97, 0.4);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s ease;
+        }
+
+        .video-wrapper::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg,
+                transparent,
+                rgba(255, 206, 97, 0.1),
+                transparent);
+            transition: left 0.6s ease;
+        }
+
+        .video-wrapper:hover::before {
+            left: 100%;
+        }
+
+        .video-wrapper:hover {
+            border-color: rgba(255, 229, 138, 0.8);
+            box-shadow:
+                0 15px 40px rgba(253, 94, 83, 0.4),
+                0 0 25px rgba(255, 206, 97, 0.3);
+        }
+
+        #video {
+            width: 100%;
+            height: auto;
+            border-radius: 20px;
+            background: #000000;
+            position: relative;
+            z-index: 1;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .simple-controls {
+            margin-top: 25px;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #DF4035, #FD5E53, #FF6D62, #EE4F44);
+            color: #ffffff;
+            border: none;
+            border-radius: 12px;
+            padding: 15px 30px;
+            font-weight: 700;
+            cursor: pointer;
+            margin: 0 10px;
+            font-size: 1.1rem;
+            transition: all 0.4s ease;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(255, 229, 138, 0.6);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent);
+            transition: left 0.5s ease;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow:
+                0 12px 30px rgba(253, 94, 83, 0.5),
+                0 0 20px rgba(255, 206, 97, 0.4);
+            border-color: rgba(255, 229, 138, 1);
+        }
+
+        .stream-info {
+            margin-top: 30px;
+            text-align: center;
+            padding: 25px;
+            background: linear-gradient(135deg,
+                rgba(0, 0, 0, 0.6) 0%,
+                rgba(31, 33, 77, 0.4) 50%,
+                rgba(0, 0, 0, 0.6) 100%);
+            border-radius: 20px;
+            backdrop-filter: blur(15px);
+            border: 3px solid rgba(255, 206, 97, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stream-info::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg,
+                transparent,
+                rgba(255, 206, 97, 0.1),
+                transparent);
+            transition: left 0.6s ease;
+        }
+
+        .stream-info:hover::before {
+            left: 100%;
+        }
+
+        .status {
+            color: #6bcf7f;
+            font-weight: 700;
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .live-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background: #6bcf7f;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        .stream-description {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            line-height: 1.6;
+            position: relative;
+            z-index: 1;
+        }
+
+        .connection-status {
+            margin-top: 15px;
+            font-size: 0.95rem;
+            opacity: 0.8;
+            position: relative;
+            z-index: 1;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 2;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            display: none;
+        }
+
+        .loading-overlay.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 206, 97, 0.3);
+            border-top: 4px solid #FFCE61;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 25px 15px;
+            }
+
+            .logo {
+                font-size: 2.2rem;
+            }
+
+            .subtitle {
+                font-size: 1rem;
+            }
+
+            .player-container {
+                padding: 0 15px;
+            }
+
+            .video-wrapper {
+                padding: 20px;
+            }
+
+            .btn {
+                padding: 12px 20px;
+                font-size: 1rem;
+                margin: 5px;
+            }
+
+            .simple-controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 class="logo">The Houston Collective</h1>
+        <p class="subtitle">🎵 Live Streaming Experience 🎵</p>
+    </div>
+
+    <div class="player-container">
+        <div class="video-wrapper">
+            <div class="loading-overlay" id="loadingOverlay">
+                <div class="spinner"></div>
+                <div>Connecting to stream...</div>
+            </div>
+
+            <video id="video" muted>
+                <p>Your browser doesn't support HTML5 video.</p>
+            </video>
+
+            <div class="simple-controls">
+                <button class="btn" onclick="toggleMute()" id="muteButton">🔊 Unmute Audio</button>
+            </div>
+        </div>
+
+        <div class="stream-info">
+            <div class="status">
+                <span class="live-indicator"></span>
+                <span id="streamStatus">LIVE</span>
+            </div>
+            <div class="stream-description">Houston's finest music streaming live</div>
+            <div class="connection-status" id="connectionStatus">Connecting to stream...</div>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const streamUrl = 'http://144.126.156.143:8080/live/test.m3u8';
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const muteButton = document.getElementById('muteButton');
+        const streamStatus = document.getElementById('streamStatus');
+        const connectionStatus = document.getElementById('connectionStatus');
+        let hls = null;
+
+        // Auto-start stream when page loads
+        window.addEventListener('load', function() {
+            startStream();
+        });
+
+        function startStream() {
+            loadingOverlay.classList.add('show');
+            connectionStatus.textContent = 'Connecting to stream...';
+            streamStatus.textContent = 'CONNECTING';
+
+            if (hls) {
+                hls.destroy();
+            }
+
+            if (Hls.isSupported()) {
+                hls = new Hls({
+                    debug: false,
+                    lowLatencyMode: true,
+                    maxBufferLength: 10,
+                    liveSyncDurationCount: 2,
+                    enableWorker: true
+                });
+
+                hls.loadSource(streamUrl);
+                hls.attachMedia(video);
+
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    console.log('Stream loaded, starting playback...');
+                    loadingOverlay.classList.remove('show');
+                    streamStatus.textContent = 'LIVE';
+                    connectionStatus.textContent = 'Stream connected successfully';
+                    video.play().catch(e => {
+                        console.log('Autoplay prevented, user interaction required');
+                        connectionStatus.textContent = 'Ready to play - click unmute to start';
+                    });
+                });
+
+                hls.on(Hls.Events.ERROR, function(event, data) {
+                    console.error('HLS error:', data);
+                    loadingOverlay.classList.remove('show');
+                    streamStatus.textContent = 'ERROR';
+                    connectionStatus.textContent = 'Connection failed - retrying...';
+                    
+                    // Auto-retry after 5 seconds
+                    setTimeout(() => {
+                        startStream();
+                    }, 5000);
+                });
+
+                hls.on(Hls.Events.FRAG_LOADED, function() {
+                    if (connectionStatus.textContent.includes('Connecting')) {
+                        connectionStatus.textContent = 'Stream active and playing';
+                    }
+                });
+
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // Fallback for Safari
+                video.src = streamUrl;
+                video.addEventListener('loadstart', function() {
+                    loadingOverlay.classList.remove('show');
+                    streamStatus.textContent = 'LIVE';
+                    connectionStatus.textContent = 'Stream connected (Safari mode)';
+                });
+                video.play().catch(e => {
+                    console.log('Autoplay prevented, user interaction required');
+                });
+            } else {
+                loadingOverlay.classList.remove('show');
+                streamStatus.textContent = 'ERROR';
+                connectionStatus.textContent = 'HLS not supported in this browser';
+            }
+        }
+
+        function toggleMute() {
+            video.muted = !video.muted;
+            muteButton.textContent = video.muted ? '🔇 Unmute Audio' : '🔊 Mute Audio';
+            
+            // If unmuting and video isn't playing, try to play
+            if (!video.muted && video.paused) {
+                video.play().catch(e => {
+                    console.log('Play failed:', e);
+                });
+            }
+        }
+
+        // Handle video events for better UX
+        video.addEventListener('waiting', function() {
+            connectionStatus.textContent = 'Buffering...';
+        });
+
+        video.addEventListener('playing', function() {
+            connectionStatus.textContent = 'Stream active and playing';
+            streamStatus.textContent = 'LIVE';
+        });
+
+        video.addEventListener('pause', function() {
+            if (!video.ended) {
+                connectionStatus.textContent = 'Stream paused';
+            }
+        });
+
+        video.addEventListener('error', function() {
+            streamStatus.textContent = 'ERROR';
+            connectionStatus.textContent = 'Video playback error - retrying...';
+            setTimeout(() => {
+                startStream();
+            }, 3000);
+        });
+
+        // Prevent right-click context menu on video
+        video.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+    </script>
+</body>
+</html>
