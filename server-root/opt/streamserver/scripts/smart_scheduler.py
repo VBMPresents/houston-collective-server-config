@@ -492,9 +492,10 @@ class SmartScheduler:
         
         # Start new stream if needed
         if not stream_healthy or playlist_changed:
+            # Fixed: Always stop stream before starting new one
             if playlist_changed:
                 self.logger.info(f"🔄 Switching to playlist {target_playlist_id} (Source: {schedule_source})")
-                self.stop_current_stream()
+            self.stop_current_stream()
             
             # Get next video with smart selection
             video = self.get_next_video(target_playlist_id, shuffle=True, loop=True)

@@ -1,0 +1,62 @@
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    server_name _;
+    
+    # Admin Interface
+    location /admin {
+        alias /opt/streamserver/web/admin/;
+        index index.php;
+        try_files $uri $uri/ =404;
+        
+        location ~ \.php$ {
+            fastcgi_pass unix:/var/run/php/php8.1-fpm.sock;
+            include fastcgi_params;
+            fastcgi_param SCRIPT_FILENAME $request_filename;
+        }
+    }
+
+    # API Endpoints  
+    location /api {
+        alias /opt/streamserver/web/api/;
+        try_files $uri $uri/ =404;
+        
+        location ~ \.php$ {
+            fastcgi_pass unix:/var/run/php/php8.1-fpm.sock;
+            include fastcgi_params;
+            fastcgi_param SCRIPT_FILENAME $request_filename;
+        }
+    }
+
+    # HLS Streaming
+    location /hls {
+        alias /opt/streamserver/srs/hls/;
+        add_header Cache-Control no-cache;
+        add_header Access-Control-Allow-Origin *;
+        add_header Access-Control-Allow-Methods GET,POST,OPTIONS;
+        add_header Access-Control-Allow-Headers Content-Type;
+    }
+
+    # Static Assets
+    location /assets {
+        alias /opt/streamserver/web/assets/;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # SRS HTTP API
+    location /srs {
+        proxy_pass http://127.0.0.1:1985;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    # Default root
+    root /var/www/html;
+    index index.html index.htm;
+    
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
