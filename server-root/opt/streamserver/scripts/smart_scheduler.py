@@ -122,6 +122,33 @@ class SmartScheduler:
         self.emergency_override = True
         self.analytics['emergency_overrides'] += 1
     
+    def cleanup_ffmpeg_processes(self):
+        """Clean up any orphaned FFmpeg processes"""
+        try:
+            # Kill any existing FFmpeg processes streaming to RTMP
+            result = subprocess.run(['pkill', '-f', 'ffmpeg.*rtmp'], 
+                                  capture_output=True, text=True)
+            if result.returncode == 0:
+                self.logger.info("🧹 Cleaned up orphaned FFmpeg processes")
+            
+            # Wait a moment for processes to die
+            time.sleep(2)
+            
+            # Double-check no processes remain
+            result = subprocess.run(['pgrep', '-f', 'ffmpeg.*rtmp'], 
+                                  capture_output=True, text=True)
+            if result.stdout.strip():
+                self.logger.warning(f"⚠️ Some FFmpeg processes still running: {result.stdout.strip()}")
+                # Force kill if necessary
+                subprocess.run(['pkill', '-9', '-f', 'ffmpeg.*rtmp'], 
+                              capture_output=True, text=True)
+                time.sleep(1)
+            
+        except Exception as e:
+            self.logger.error(f"❌ Error during FFmpeg cleanup: {e}")
+            self.analytics['errors'] += 1
+
+
     def get_db_connection(self):
         """Get database connection with error handling"""
         try:
@@ -367,8 +394,8 @@ class SmartScheduler:
             '-c:v', 'libx264',
             '-preset', quality_preset,
             '-tune', 'zerolatency',  # Low latency streaming
-            '-crf', '23',  # Constant quality
-            '-maxrate', '2000k',  # Max bitrate
+            '-crf', '28',  # Constant quality
+            '-maxrate', '1500k',  # Max bitrate
             '-bufsize', '4000k',  # Buffer size
             '-c:a', 'aac',
             '-b:a', '128k',  # Audio bitrate
@@ -394,8 +421,7 @@ class SmartScheduler:
             )
             
             self.analytics['streams_started'] += 1
-            self.analytics_logger.info(f"Stream started: {video['display_name']} (Playlist: {self.current_playlist_id})")
-            
+        
             return True
             
         except Exception as e:
@@ -404,7 +430,7 @@ class SmartScheduler:
             return False
     
     def check_stream_health(self):
-        """Advanced stream health monitoring"""
+        """Advanced stream health monitoring with natural ending detection"""
         if not self.current_process:
             return False
         
@@ -420,6 +446,26 @@ class SmartScheduler:
                 self.logger.info(f"📺 Stream ended with code: {poll_result}")
             
             self.current_process = None
+            
+            # CRITICAL FIX: Return different values based on exit code
+            if poll_result == 0:
+                self.logger.info("✅ Video ended naturally - will advance to next video")
+                return "ended_naturally"
+            else:
+                self.logger.warning(f"❌ Stream crashed with code {poll_result} - will retry same video")
+                return False
+        
+        # CRITICAL: Check if HLS files are being created
+        from pathlib import Path
+        import time
+        hls_path = Path("/opt/streamserver/srs/hls/live/test.m3u8")
+        if not hls_path.exists():
+            self.logger.warning("⚠️ HLS playlist file missing")
+            return False
+            
+        # Check if HLS file is recent (within last 45 seconds)
+        if time.time() - hls_path.stat().st_mtime > 45:
+            self.logger.warning("⚠️ HLS file is stale - stream appears hung")
             return False
         
         return True
@@ -450,10 +496,24 @@ class SmartScheduler:
             self.logger.error(f"❌ Failed to save analytics: {e}")
     
     def run_smart_cycle(self):
-        """Main intelligent scheduling cycle"""
+        """Main intelligent scheduling cycle with enhanced stream management"""
         target_playlist_id = None
         schedule_source = "fallback"
         
+        # CRITICAL FIX: Periodically check for override clearing
+        try:
+            config_file = f'{self.config_dir}/emergency.json'
+            if os.path.exists(config_file):
+                with open(config_file, 'r') as f:
+                    config = json.load(f)
+                    if 'emergency_override' in config and not config['emergency_override']:
+                        if self.emergency_override:
+                            self.logger.info("✅ Emergency override cleared via web interface")
+                            self.emergency_override = False
+        except Exception as e:
+            self.logger.warning(f"⚠️ Error checking override config: {e}")
+
+
         # Check for emergency override
         if self.emergency_override and self.override_playlist_id:
             target_playlist_id = self.override_playlist_id
@@ -486,15 +546,29 @@ class SmartScheduler:
             self.logger.warning("⚠️ No playlist available for streaming")
             return
         
-        # Check if playlist change is needed
+        # Check stream health with enhanced detection
+        stream_health = self.check_stream_health()
         playlist_changed = target_playlist_id != self.current_playlist_id
-        stream_healthy = self.check_stream_health()
         
-        # Start new stream if needed
-        if not stream_healthy or playlist_changed:
-            # Fixed: Always stop stream before starting new one
+        # CRITICAL FIX: Handle natural endings vs crashes differently
+        if stream_health == "ended_naturally":
+            self.logger.info("🎬 Video completed naturally - advancing to next video")
+            video = self.get_next_video(target_playlist_id, shuffle=True, loop=True)
+            if video:
+                self.start_video_stream(video)
+            else:
+                self.logger.error(f"❌ No videos available in playlist {target_playlist_id}")
+                self.analytics['errors'] += 1
+        elif not stream_health or playlist_changed:
+            # Stream unhealthy or playlist change needed
             if playlist_changed:
                 self.logger.info(f"🔄 Switching to playlist {target_playlist_id} (Source: {schedule_source})")
+            else:
+                self.logger.warning("🚨 Stream unhealthy - restarting current video")
+                # Don't advance index on crash - retry same video
+                if self.current_video_index > 0:
+                    self.current_video_index -= 1
+            
             self.stop_current_stream()
             
             # Get next video with smart selection
@@ -509,6 +583,9 @@ class SmartScheduler:
         """Main smart scheduler loop with enhanced monitoring"""
         self.logger.info("🧠 Starting Smart Scheduler with advanced features...")
         self.is_running = True
+        
+        # Clean up any orphaned processes at startup
+        self.cleanup_ffmpeg_processes()
         cycle_count = 0
         
         while self.is_running:
@@ -516,25 +593,32 @@ class SmartScheduler:
                 cycle_count += 1
                 self.run_smart_cycle()
                 
-                # Periodic analytics save
-                if cycle_count % 60 == 0:  # Every hour
-                    self.save_analytics()
-                    self.logger.info(f"📊 Hourly stats: {self.analytics['streams_started']} streams, {self.analytics['errors']} errors")
+                # Periodic analytics save with robust error handling
+                # Periodic analytics save with robust error handling
+                if cycle_count % 360 == 0:  # Every hour (360 cycles * 10s = 1 hour)
+                    try:
+                        self.save_analytics()
+                        self.logger.info(f"📊 Hourly stats: {self.analytics['streams_started']} streams, {self.analytics['errors']} errors")
+                    except Exception as e:
+                        self.logger.warning(f"⚠️ Analytics save failed: {e}")
                 
-                # Wait 60 seconds with graceful shutdown check
-                for i in range(60):
+                # Wait 10 seconds with graceful shutdown check
+                for i in range(10):
                     if not self.is_running:
                         break
                     time.sleep(1)
-                
+                    
             except Exception as e:
                 self.logger.error(f"❌ Smart scheduler cycle error: {e}")
                 self.analytics['errors'] += 1
                 time.sleep(30)  # Wait before retrying on error
         
         self.save_analytics()
+        
+        self.save_analytics()
         self.logger.info("🧠 Smart Scheduler stopped")
 
 if __name__ == "__main__":
     scheduler = SmartScheduler()
+    scheduler.run()
     scheduler.run()
